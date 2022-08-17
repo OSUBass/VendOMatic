@@ -1,0 +1,15 @@
+{
+  "name": "vendomatic",
+  "version": "1.0.0",
+  "description": "Beverage vending machine support",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Shelly Bass",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.1"
+  }
+}
