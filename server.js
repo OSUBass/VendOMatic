@@ -10,44 +10,33 @@ app.use(cors())
 
 
 
-const drinkCost = 2;        // cost of drinks in coins
+const drinkCost = 2;        // cost of drinks (in quarters/coins)
 const initialStock = 5;         // initial stock of drinks
-let allDrinks = [];
 
 
-class Transaction{
+class Inventory{
     constructor(){
-        this.coins = 0;
+        this.allDrinks = [];
     }
 
-    // resets coins recieved to 0
-    resetCoins(){
-        this.coins = 0;
+    getDrinkInventory(){
+        let eachInventory = [];
+        this.allDrinks.forEach((item) => {
+            eachInventory.push(item.inStock)
+        })
+        return eachInventory;
     }
 
-    // adds # of coins inserted into machine to total coins paid during transaction so far
-    addCoins(num){
-        this.coins += num;
-    }
-
-    // returns total coins paid so far during transaction
-    getCoins(){
-        return this.coins;
-    }
-    
-    // subtracts drink cost from # of coins deposited and returns # of coins to refund.
-    payment(){
-        this.coins -= drinkCost;
-        return this.coins;
+    addDrink(item){
+        this.allDrinks.push(item)
     }
 }
 
 
-
 class Drink{
-    constructor(){
+    constructor(id){
+        this.id = id;
         this.inStock = initialStock;
-        allDrinks.push(this)
     }
 
     // returns # of items in stock
@@ -63,26 +52,45 @@ class Drink{
 }
 
 
-// returns # of items in stock for all drinks
-function getInventory(){
-    let drinkInventory = []
-    for(let drink of allDrinks){
-        drinkInventory.push(drink.getItemStock())
+class Transaction{
+    constructor(){
+        this.coins = 0;
     }
-    return drinkInventory;
+
+    // returns total coins paid so far during transaction
+    getCoins(){
+        return this.coins;
+    }
+
+    // resets coins recieved to 0
+    resetCoins(){
+        this.coins = 0;
+    }
+
+    // adds # of coins inserted into machine to total coins paid during transaction so far
+    addCoins(num){
+        this.coins += num;
+    }
+    
+    // subtracts drink cost from # of coins deposited and returns # of coins to refund.
+    payment(){
+        this.coins -= drinkCost;
+        return this.coins;
+    }
 }
 
 
 let curTransaction = new Transaction();
-let drink1 = new Drink();
-let drink2 = new Drink();
-let drink3 = new Drink();
+let curInventory = new Inventory();
+curInventory.addDrink(new Drink(1))
+curInventory.addDrink(new Drink(2))
+curInventory.addDrink(new Drink(3))
 
 /*********************************************************************************************
 *****************************************Routes***********************************************
 *********************************************************************************************/
 
-// route to add coins to machine.
+// route to add coins to machine. # of coins currently deposited set in response header
 app.put('/', function(req,res){
     let numCoin = req.body.coin;
     curTransaction.addCoins(numCoin);
@@ -90,57 +98,62 @@ app.put('/', function(req,res){
     res.status(204).end();
 })
 
-// route returns all coins currently deposited
+// route returns all coins currently deposited. # of coins returned set in response header
 app.delete('/', function(req,res){
-    let coinsReturned = curTransaction.returnCoins()
+    let coinsReturned = curTransaction.getCoins()
     curTransaction.resetCoins()
     res.set("X-Coins", coinsReturned);
     res.status(204).end();
 })
 
-// route returns an array of remaining drink quantities(integers)
+// route returns an array of remaining drink quantities(integers) in res body
 app.get('/inventory', function(req, res){
-    let inventoryCheck = getInventory();
+    let inventoryCheck = curInventory.getDrinkInventory();
     res.status(200).json(inventoryCheck);
 });
 
 // route returns quantity of a specific item in inventory
 app.get('/inventory/:id', function (req,res){
     let id = req.params.id
-    let itemQty = allDrinks[id-1].getItemStock();
+    let item = curInventory.allDrinks.find(drink => drink.id === parseInt(id))
+    let itemQty = item.getItemStock();
     res.status(200).json(itemQty);
 });
 
 // route when purchase is attempted
 app.put('/inventory/:id', function(req, res){
     let id = req.params.id
+    let item = curInventory.allDrinks.find(drink => drink.id === parseInt(id))
     let coinsPaid = curTransaction.getCoins();
-    let itemQty = allDrinks[id-1].getItemStock();
+    let itemQty = item.getItemStock();
     
-    // if item is out of stock
+    // if item is out of stock, # of coins deposited set in response header
     if (itemQty < 1){
         res.set("X-Coins", curTransaction.getCoins());
         res.status(404).end();
     
-    // if attempt to purchase is made but payment is insufficient
+    // if payment is insufficient. # of coins deposited set in response header
     }else if(coinsPaid < drinkCost){
         res.set("X-Coins", curTransaction.getCoins());
         res.status(403).end();
     
-    // if vend is successful
+    /* if vend is successful: 
+        total # of the item id vended since the initial stock is set in res body; 
+        # of coins to return to customer set in response header;
+        # of vended item remaining in stock set in response header;
+    */
     }else{
-        // subtract cost of drink from deposited coins & reset coins to 0 for transaction
+        // cost of drink subtracted from deposited coins & coins deposited reset to 0 for transaction
         let coinsToReturn =curTransaction.payment()
         curTransaction.resetCoins();
         
         // reduce stock of drink
-        itemQty = allDrinks[id-1].ItemPurchased();
+        itemQty = item.ItemPurchased();
 
         let numItemsVended = initialStock - itemQty;
         
         res.set("X-Coins", coinsToReturn);
-        res.set("X-Inventory-Remaining", itemQty);
-        
+        res.set("X-Inventory-Remaining", itemQty); 
         res.status(200).json({"quantity" : numItemsVended})
     }
 })
