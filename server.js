@@ -10,17 +10,20 @@ app.use(cors())
 
 
 
-const drinkCost = 2;        // cost of drinks (in quarters/coins)
+//const drinkCost = 2;        // cost of drinks (in quarters/coins)
 const initialStock = 5;         // initial stock of drinks
 
 
 class Inventory{
     constructor(){
-        this.allDrinks = [];
+        this.allDrinks = {};
     }
 
+    //allDrinks.id = {info}
+    let drinkinfo = allDrinks[id].inStock
     getDrinkInventory(){
         let eachInventory = [];
+
         this.allDrinks.forEach((item) => {
             eachInventory.push(item.inStock)
         })
@@ -28,14 +31,15 @@ class Inventory{
     }
 
     addDrink(item){
-        this.allDrinks.push(item)
+        this.allDrinks[item]
     }
 }
 
 
 class Drink{
-    constructor(id){
+    constructor(id, cost){
         this.id = id;
+        this.cost = cost;
         this.inStock = initialStock;
     }
 
@@ -54,7 +58,7 @@ class Drink{
 
 class Transaction{
     constructor(){
-        this.coins = 0;
+        this.money = 0;
     }
 
     // returns total coins paid so far during transaction
@@ -68,8 +72,8 @@ class Transaction{
     }
 
     // adds # of coins inserted into machine to total coins paid during transaction so far
-    addCoins(num){
-        this.coins += num;
+    addCoins(cost){
+        this.coins += cost;
     }
     
     // subtracts drink cost from # of coins deposited and returns # of coins to refund.
@@ -79,12 +83,16 @@ class Transaction{
     }
 }
 
+function findID(id){
+    curInventory.allDrinks.find(drink => drink.id === parseInt(id))
+}
+
 
 let curTransaction = new Transaction();
 let curInventory = new Inventory();
-curInventory.addDrink(new Drink(1))
-curInventory.addDrink(new Drink(2))
-curInventory.addDrink(new Drink(3))
+curInventory.addDrink(new Drink(1, 1))
+curInventory.addDrink(new Drink(2, .50))
+curInventory.addDrink(new Drink(3, 1))
 
 /*********************************************************************************************
 *****************************************Routes***********************************************
@@ -123,7 +131,7 @@ app.get('/inventory/:id', function (req,res){
 // route when purchase is attempted
 app.put('/inventory/:id', function(req, res){
     let id = req.params.id
-    let item = curInventory.allDrinks.find(drink => drink.id === parseInt(id))
+    let item = findID(id)
     let coinsPaid = curTransaction.getCoins();
     let itemQty = item.getItemStock();
     
